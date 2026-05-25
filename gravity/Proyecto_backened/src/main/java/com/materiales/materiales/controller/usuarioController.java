@@ -13,14 +13,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Description;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 /**
@@ -132,4 +129,85 @@ public class usuarioController {
         usuarioResponseDTO dto = usuarioMapper.toResponseDTO(guardado);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
+    // ─────────────────────────────────────────────
+// PUT /api/usuarios/{id}  → Actualizar usuario
+// ─────────────────────────────────────────────
+@PutMapping("/{id}")
+@Operation(
+    summary = "Actualizar un usuario",
+    description = "Modifica los datos de un usuario existente por su ID."
+)
+@ApiResponses(value = {
+    @ApiResponse(responseCode = "200", description = "Usuario actualizado correctamente",
+        content = @Content(schema = @Schema(implementation = usuarioResponseDTO.class))),
+    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+})
+public ResponseEntity<usuarioResponseDTO> actualizar(
+        @PathVariable
+        @Parameter(description = "ID numérico del usuario", example = "1")
+        Long id,
+        @RequestBody
+        @Parameter(description = "Nuevos datos del usuario")
+        usuarioRequestDTO requestDTO) {
+
+    return usuarioRepository.findById(id)
+            .map(u -> {
+                u.setNombre(requestDTO.getNombre());
+                u.setDocumento(requestDTO.getDocumento());
+                u.setCorreo(requestDTO.getCorreo());
+                if (requestDTO.getRol() != null && !requestDTO.getRol().isBlank()) {
+                    u.setRol(requestDTO.getRol().toUpperCase().trim());
+                }
+                usuario actualizado = usuarioRepository.save(u);
+                return ResponseEntity.ok(usuarioMapper.toResponseDTO(actualizado));
+            })
+            .orElse(ResponseEntity.notFound().build());
+}
+
+// ─────────────────────────────────────────────
+// DELETE /api/usuarios/{id}  → Eliminar usuario
+// ─────────────────────────────────────────────
+@DeleteMapping("/{id}")
+@Operation(
+    summary = "Eliminar un usuario",
+    description = "Elimina permanentemente un usuario del sistema por su ID."
+)
+@ApiResponses(value = {
+    @ApiResponse(responseCode = "200", description = "Usuario eliminado correctamente"),
+    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+})
+public ResponseEntity<String> eliminar(
+        @PathVariable
+        @Parameter(description = "ID numérico del usuario", example = "1")
+        Long id) {
+
+    if (!usuarioRepository.existsById(id)) {
+        return ResponseEntity.notFound().build();
+    }
+    usuarioRepository.deleteById(id);
+    return ResponseEntity.ok("Usuario eliminado correctamente.");
+}
+
+// ─────────────────────────────────────────────
+// GET /api/usuarios/{id}/perfil  → Validar perfil
+// ─────────────────────────────────────────────
+@GetMapping("/{id}/perfil")
+@Operation(
+    summary = "Validar perfil de usuario",
+    description = "Verifica que el usuario exista y retorna su perfil completo."
+)
+@ApiResponses(value = {
+    @ApiResponse(responseCode = "200", description = "Perfil encontrado",
+        content = @Content(schema = @Schema(implementation = usuarioResponseDTO.class))),
+    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+})
+public ResponseEntity<usuarioResponseDTO> validarPerfil(
+        @PathVariable
+        @Parameter(description = "ID numérico del usuario", example = "1")
+        Long id) {
+
+    return usuarioRepository.findById(id)
+            .map(u -> ResponseEntity.ok(usuarioMapper.toResponseDTO(u)))
+            .orElse(ResponseEntity.notFound().build());
+}
 }
